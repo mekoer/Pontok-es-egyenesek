@@ -33,6 +33,8 @@
 //=============================================================================================
 #include "framework.h"
 
+using namespace std;
+
 // vertex shader in GLSL: It is a Raw string (C++11) since it contains new line characters
 const char * const vertexSource = R"(
 	#version 330				// Shader 3.3
@@ -60,29 +62,12 @@ const char * const fragmentSource = R"(
 )";
 
 GPUProgram gpuProgram; // vertex and fragment shaders
-unsigned int vao;	   // virtual world on the GPU
 
 // Initialization, create an OpenGL context
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
-	glGenVertexArrays(1, &vao);	// get 1 vao id
-	glBindVertexArray(vao);		// make it active
 
-	unsigned int vbo;		// vertex buffer object
-	glGenBuffers(1, &vbo);	// Generate 1 buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Geometry with 24 bytes (6 floats or 3 x 2 coordinates)
-	float vertices[] = { -0.8f, -0.8f, -0.6f, 1.0f, 0.8f, -0.2f };
-	glBufferData(GL_ARRAY_BUFFER, 	// Copy to GPU target
-		sizeof(vertices),  // # bytes
-		vertices,	      	// address
-		GL_STATIC_DRAW);	// we do not change later
-
-	glEnableVertexAttribArray(0);  // AttribArray 0
-	glVertexAttribPointer(0,       // vbo -> AttribArray 0
-		2, GL_FLOAT, GL_FALSE, // two floats/attrib, not fixed-point
-		0, NULL); 		     // stride, offset: tightly packed
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
@@ -105,7 +90,7 @@ void onDisplay() {
 	location = glGetUniformLocation(gpuProgram.getId(), "MVP");	// Get the GPU location of uniform variable MVP
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
 
-	glBindVertexArray(vao);  // Draw call
+	//glBindVertexArray(vao);  // Draw call
 	glDrawArrays(GL_TRIANGLES, 0 /*startIdx*/, 3 /*# Elements*/);
 
 	glutSwapBuffers(); // exchange buffers for double buffering
@@ -151,3 +136,50 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME); // elapsed time since the start of the program
 }
+
+
+class Object {
+	unsigned int vao, vbo;
+	vector<vec2> vtx;
+
+public:
+	Object() {
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+		glEnableVertexAttribArray(0);
+		// two floats/attrib, not fixed-point, stride, offset: tightly packed
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+	}
+
+	vector<vec2>& getVtxArray() {
+		return vtx;
+	}
+
+	void updateGPU() {
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, vtx.size() * sizeof(vec2), &vtx[0], GL_DYNAMIC_DRAW);
+	}
+
+	void Draw(int type, vec3 color) {
+		if (vtx.size() > 0) {
+			glBindVertexArray(vao);
+			gpuProgram.setUniform(color, "color");
+			glDrawArrays(type, 0, vtx.size());
+		}
+	}
+};
+
+class PointCollection {
+	Object points;
+
+public:
+	void addPoint(vec2 point) {}
+	void drawPoints() {
+		points.Draw(GL_POINT, vec3(1.0f, 0.0f, 0.0f));
+	}
+};
