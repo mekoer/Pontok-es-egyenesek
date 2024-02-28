@@ -91,7 +91,7 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
 
 	//glBindVertexArray(vao);  // Draw call
-	glDrawArrays(GL_TRIANGLES, 0 /*startIdx*/, 3 /*# Elements*/);
+	//glDrawArrays(GL_TRIANGLES, 0 /*startIdx*/, 3 /*# Elements*/);
 
 	glutSwapBuffers(); // exchange buffers for double buffering
 }
@@ -178,7 +178,9 @@ class PointCollection {
 	Object points;
 
 public:
-	void addPoint(vec2 point) {}
+	void addPoint(vec2 point) {
+		points.getVtxArray().push_back(point);
+	}
 	void drawPoints() {
 		points.Draw(GL_POINT, vec3(1.0f, 0.0f, 0.0f));
 	}
