@@ -69,7 +69,6 @@ GPUProgram gpuProgram; // vertex and fragment shaders
 class Object {
 	unsigned int vao, vbo;
 	vector<vec2> vtx;
-
 public:
 	Object() {
 		glGenVertexArrays(1, &vao);
@@ -104,7 +103,6 @@ public:
 
 class PointCollection {
 	Object points;
-
 public:
 	PointCollection() {
 		points = Object();
@@ -114,7 +112,42 @@ public:
 		points.updateGPU();
 	}
 	void drawPoints() {
-		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 0.0f));
+		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 1.0f));
+	}
+};
+
+class Line {
+public:
+	Line(vec2 p1, vec2 p2) {
+
+	}
+
+	vec2 intersectPoint(Line otherLine) {
+
+	}
+
+	bool pointOnLine(vec2 point) {
+
+	}
+
+	void inViewPort() {
+
+	}
+
+	void move(vec2 point) {
+
+	}
+};
+
+class LineCollection {
+	Object endPoints;
+public:
+	void addLine(Line line) {
+
+	}
+
+	void drawLines() {
+
 	}
 };
 
