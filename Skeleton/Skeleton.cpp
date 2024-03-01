@@ -118,7 +118,7 @@ public:
 		points = Object();
 	}
 	void addPoint(vec2 point) {
-		cout << "pont felveve" << endl;
+		//cout << "pont felveve" << endl;
 		points.getVtxArray().push_back(point);
 		points.updateGPU();
 	}
@@ -126,7 +126,7 @@ public:
 		for (const vec2& vertex : points.getVtxArray()) {
 			if (vertex.x >= click.x - 0.01f && vertex.x <= click.x + 0.01f
 				&& vertex.y >= click.y - 0.01f && vertex.y <= click.y + 0.01f) {
-				cout << "kijelolve: " << vertex.x  << " " << vertex.y << endl;
+				//cout << "kijelolve: " << vertex.x  << " " << vertex.y << endl;
 				return &vertex;
 			}
 		}
@@ -147,11 +147,14 @@ protected:
 public:
 	Line(vec2 p1, vec2 p2) {
 		cP0 = p1;
-		cParallelVector = p2 - cP0;
+		cParallelVector = p2 - p1;
+		cout << "iranyvektor: " << cParallelVector.x << " " << cParallelVector.y << endl;
 		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
+		cout << "normalvektor: " << cNormalVector.x << " " << cNormalVector.y << " ";
 		A = cNormalVector.x;
 		B = cNormalVector.y;
-		C = (-1) * (cNormalVector.x * cP0.x + cNormalVector.y * cP0.y);
+		C = -1 * cNormalVector.x * p1.x + -1 * cNormalVector.y * p1.y;
+		cout << C << endl;
 	}
 
 	vec2* intersectPoint(Line otherLine) {
@@ -160,8 +163,8 @@ public:
 		if (denominator == 0) return nullptr;
 
 		vec2 intersectPoint;
-		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / denominator;
-		intersectPoint.y = (A * otherLine.C - otherLine.A * C) / denominator;
+		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / (otherLine.A * B - A * otherLine.B);
+		intersectPoint.y = (otherLine.A * C - A * otherLine.C) / (A * otherLine.B - otherLine.A * B);
 		
 		return &intersectPoint;
 	}
@@ -267,11 +270,11 @@ public:
 
 			// kapott két pontot visszateszi vtxbe, ez alapjan rajzolható a vonal
 			endPoints.getVtxArray().push_back(viewPortI.back());
-			cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
+			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
 			viewPortI.pop_back();
 
 			endPoints.getVtxArray().push_back(viewPortI.back());
-			cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
+			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
 			viewPortI.pop_back();
 
 			endPoints.updateGPU();
@@ -279,7 +282,7 @@ public:
 	}
 
 	void draw() {
-		cout << "drawlines" << endl;
+		//cout << "drawlines" << endl;
 		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
 	}
 };
@@ -300,6 +303,13 @@ void onInitialization() {
 	//pontok->addPoint(vec2(0.0f, 0.5f));
 	//pontok->addPoint(vec2(0.5f, 0.0f));
 	//pontok->addPoint(vec2(0.5f, 0.5f));
+	/*
+	pontok->addPoint(vec2(0.3f, 0.0f));
+	pontok->addPoint(vec2(0.2f, 0.2f));
+	
+	vonalak->addVertex(vec2(0.2f, 0.2f));
+	vonalak->addVertex(vec2(0.3f, 0.0f));
+	vonalak->addLine();*/
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
@@ -321,7 +331,8 @@ void onDisplay() {
 
 	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");	// Get the GPU location of uniform variable MVP
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
-
+	
+	
 
 	pontok->draw();
 	vonalak->draw();
@@ -370,12 +381,13 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 		switch (windowState)
 		{
 		case IDLE:
-			cout << windowState << endl;
+			printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
+			//cout << windowState << endl;
 			break;
 		case DRAW_POINTS:
 			switch (button) {
 			case GLUT_LEFT_BUTTON:
-				cout << windowState << endl;
+				//cout << windowState << endl;
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				pontok->addPoint(vec2(cX, cY));
 				//glutPostRedisplay();
@@ -387,7 +399,7 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 		case DRAW_LINES:
 			switch (button) {
 			case GLUT_LEFT_BUTTON:
-				cout << windowState << endl;
+				//cout << windowState << endl;
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
@@ -406,7 +418,7 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 		case POINT_CHOSEN:
 			switch (button) {
 			case GLUT_LEFT_BUTTON:
-				cout << windowState << endl;
+				//cout << windowState << endl;
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				//line hozzaadasa ide
 				vec2 cP(cX, cY);
