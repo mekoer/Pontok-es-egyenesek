@@ -132,7 +132,7 @@ public:
 		}
 		return NULL;
 	}
-	void drawPoints() {
+	void draw() {
 		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 0.0f));
 	}
 };
@@ -141,27 +141,88 @@ class Line {
 	vec2 cP0;
 	vec2 cParallelVector;
 	vec2 cNormalVector;
+	// implicit egyenlet parameterek
+protected:
+	float A, B, C;
 public:
 	Line(vec2 p1, vec2 p2) {
-		cParallelVector = p2 - p1;
-		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
 		cP0 = p1;
+		cParallelVector = p2 - cP0;
+		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
+		A = cNormalVector.x;
+		B = cNormalVector.y;
+		C = (-1) * (cNormalVector.x * cP0.x + cNormalVector.y * cP0.y);
 	}
 
-	vec2 intersectPoint(Line otherLine) {
+	vec2* intersectPoint(Line otherLine) {
+		// a1*b2 - a2*b1 // osztó
+		float denominator = A * otherLine.B - otherLine.A * B;
+		if (denominator == 0) return nullptr;
 
+		vec2 intersectPoint;
+		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / denominator;
+		intersectPoint.y = (A * otherLine.C - otherLine.A * C) / denominator;
+		
+		return &intersectPoint;
 	}
 
 	bool pointOnLine(vec2 point) {
-		float c = (-1) * (cNormalVector.x * cP0.x + cNormalVector.y * cP0.y);
-		if (cNormalVector.x * point.x + cNormalVector.y * point.y + c == 0) {
+		if (A * point.x + B * point.y + C == 0) {
 			return true;
 		}
 		return false;
 	}
 
-	void inViewPort() {
+	// viewport negyzet oldalaival valo talalkozas pontjait adja vissza
+	vector<vec2> inViewPort() {
+		vector<vec2> vertices;
+		int numberOfIntersects = 0;
 
+		// képernyõ teteje:
+		Line top(vec2(1.0f, 1.0f), vec2(-1.0f, 1.0f));
+
+		vec2* intersect = intersectPoint(top);
+		if (intersect != nullptr) {
+			if (intersect->x >= -1 && intersect->x <= 1) {
+				numberOfIntersects++;
+				vertices.push_back(*intersect);
+			}
+		}
+
+		// képernyõ alja:
+		Line bottom(vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f));
+
+		intersect = intersectPoint(bottom);
+		if (intersect != nullptr) {
+			if (intersect->x >= -1 && intersect->x <= 1) {
+				numberOfIntersects++;
+				vertices.push_back(*intersect);
+			}
+		}
+		
+		// képernyõ jobb oldala:
+		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
+
+		intersect = intersectPoint(right);
+		if (intersect != nullptr && numberOfIntersects <= 2) {
+			if (intersect->y >= -1 && intersect->y <= 1) {
+				numberOfIntersects++;
+				vertices.push_back(*intersect);
+			}
+		}
+
+		// képernyõ bal oldala:
+		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
+
+		intersect = intersectPoint(left);
+		if (intersect != nullptr && numberOfIntersects <= 2) {
+			if (intersect->y >= -1 && intersect->y <= 1) {
+				numberOfIntersects++;
+				vertices.push_back(*intersect);
+			}
+		}
+		
+		return vertices;
 	}
 
 	void move(vec2 point) {
@@ -177,18 +238,48 @@ public:
 		endPoints = Object();
 	}
 
-	// hozzaad egyetlen pontot
-	void addVertex() {
-
+	void addVertex(vec2 vtx) {
+		endPoints.getVtxArray().push_back(vtx);
 	}
 
-	// felvesz egy uj vonalat
-	void addLine(Line line) {
-		lines.push_back(line);
-		endPoints.updateGPU();
+	// eltávolítja az utoljára hozzáadott elemet, ha nem kerül kiválasztásra második pont
+	void removeLastVertex() {
+		// csak akkor vegye ki ha páratlan elem van benne
+		if (endPoints.getVtxArray().size() % 2 == 1) {
+			endPoints.getVtxArray().pop_back();
+		}
+	}
+	
+	void addLine() {
+		if (endPoints.getVtxArray().size() % 2 == 0) {
+			// két utolsó elemet kiveszi a vtx-ek közül
+			vec2 p1 = endPoints.getVtxArray().back();
+			endPoints.getVtxArray().pop_back();
+			vec2 p2 = endPoints.getVtxArray().back();
+			endPoints.getVtxArray().pop_back();
+
+			// ezekbõl létrehozza a vonalat és elteszi
+			Line newLine(p1, p2);
+			lines.push_back(newLine);
+
+			// kiszámolja hol metszi a viewport szélét
+			vector<vec2> viewPortI = newLine.inViewPort();
+
+			// kapott két pontot visszateszi vtxbe, ez alapjan rajzolható a vonal
+			endPoints.getVtxArray().push_back(viewPortI.back());
+			cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
+			viewPortI.pop_back();
+
+			endPoints.getVtxArray().push_back(viewPortI.back());
+			cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
+			viewPortI.pop_back();
+
+			endPoints.updateGPU();
+		}
 	}
 
-	void drawLines() {
+	void draw() {
+		cout << "drawlines" << endl;
 		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
 	}
 };
@@ -232,8 +323,8 @@ void onDisplay() {
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
 
 
-	pontok->drawPoints();
-	vonalak->drawLines();
+	pontok->draw();
+	vonalak->draw();
 
 	glutSwapBuffers(); // exchange buffers for double buffering
 }
@@ -298,13 +389,12 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 			case GLUT_LEFT_BUTTON:
 				cout << windowState << endl;
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
-				//line hozzaadasa ide
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
 				if (clickedPoint != nullptr) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
-					endpoint1 = temp;
-					cout << endpoint1.x << " " << endpoint1.y << endl;
+					// itt kene eltartolni a pontot az egyeneshez
+					vonalak->addVertex(temp);
 					windowState = POINT_CHOSEN;
 				}
 				break;
@@ -323,12 +413,11 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				const vec2* clickedPoint = pontok->pointNearby(cP);
 				if (clickedPoint != NULL) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
-					endpoint2 = temp;
-					//cout << temp.x << " " << temp.y << " " << endpoints[1].x << " " << endpoints[1].y << endl;
-					cout << endpoint1.x << " " << endpoint1.y << " " << endpoint2.x << " " << endpoint2.y << endl;
 					windowState = DRAW_LINES;
 					
-					vonalak->addLine(Line(endpoint1, endpoint2), endpoint1, endpoint2);
+					// itt kene eltartolni a pontot az egyeneshez
+					vonalak->addVertex(temp);
+					vonalak->addLine();
 					
 					glutPostRedisplay();
 				}
