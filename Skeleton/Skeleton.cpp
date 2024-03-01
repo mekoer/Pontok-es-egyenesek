@@ -32,6 +32,7 @@
 // negativ elojellel szamoljak el es ezzel parhuzamosan eljaras is indul velem szemben.
 //=============================================================================================
 #include "framework.h"
+#include "iostream"
 
 class Object;
 class PointCollection;
@@ -39,7 +40,7 @@ class PointCollection;
 using namespace std;
 
 // vertex shader in GLSL: It is a Raw string (C++11) since it contains new line characters
-const char * const vertexSource = R"(
+const char* const vertexSource = R"(
 	#version 330				// Shader 3.3
 	precision highp float;		// normal floats, makes no difference on desktop computers
 
@@ -52,7 +53,7 @@ const char * const vertexSource = R"(
 )";
 
 // fragment shader in GLSL
-const char * const fragmentSource = R"(
+const char* const fragmentSource = R"(
 	#version 330			// Shader 3.3
 	precision highp float;	// normal floats, makes no difference on desktop computers
 	
@@ -65,6 +66,15 @@ const char * const fragmentSource = R"(
 )";
 
 GPUProgram gpuProgram; // vertex and fragment shaders
+
+enum WindowState {
+	IDLE = 0,
+	DRAW_POINTS = 1,
+	DRAW_LINES = 2,
+	POINT_CHOSEN = 3
+};
+
+int windowState = WindowState::IDLE;
 
 class Object {
 	unsigned int vao, vbo;
@@ -108,18 +118,34 @@ public:
 		points = Object();
 	}
 	void addPoint(vec2 point) {
+		cout << "pont felveve" << endl;
 		points.getVtxArray().push_back(point);
 		points.updateGPU();
 	}
+	const vec2* pointNearby(vec2 click) {
+		for (const vec2& vertex : points.getVtxArray()) {
+			if (vertex.x >= click.x - 0.01f && vertex.x <= click.x + 0.01f
+				&& vertex.y >= click.y - 0.01f && vertex.y <= click.y + 0.01f) {
+				cout << "kijelolve: " << vertex.x  << " " << vertex.y << endl;
+				return &vertex;
+			}
+		}
+		return NULL;
+	}
 	void drawPoints() {
-		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 1.0f));
+		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 0.0f));
 	}
 };
 
 class Line {
+	vec2 cP0;
+	vec2 cParallelVector;
+	vec2 cNormalVector;
 public:
 	Line(vec2 p1, vec2 p2) {
-
+		cParallelVector = p2 - p1;
+		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
+		cP0 = p1;
 	}
 
 	vec2 intersectPoint(Line otherLine) {
@@ -127,7 +153,11 @@ public:
 	}
 
 	bool pointOnLine(vec2 point) {
-
+		float c = (-1) * (cNormalVector.x * cP0.x + cNormalVector.y * cP0.y);
+		if (cNormalVector.x * point.x + cNormalVector.y * point.y + c == 0) {
+			return true;
+		}
+		return false;
 	}
 
 	void inViewPort() {
@@ -141,25 +171,40 @@ public:
 
 class LineCollection {
 	Object endPoints;
+	vector<Line> lines;
 public:
-	void addLine(Line line) {
+	LineCollection() {
+		endPoints = Object();
+	}
 
+	// hozzaad egyetlen pontot
+	void addVertex() {
+
+	}
+
+	// felvesz egy uj vonalat
+	void addLine(Line line) {
+		lines.push_back(line);
+		endPoints.updateGPU();
 	}
 
 	void drawLines() {
-
+		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
 	}
 };
 
-PointCollection *pontok;
+PointCollection* pontok;
+LineCollection* vonalak;
 
 // Initialization, create an OpenGL context
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
-	
+
 	glPointSize(10);
+	glLineWidth(3);
 
 	pontok = new PointCollection;
+	vonalak = new LineCollection;
 	//pontok->addPoint(vec2(0.0f, 0.0f));
 	//pontok->addPoint(vec2(0.0f, 0.5f));
 	//pontok->addPoint(vec2(0.5f, 0.0f));
@@ -186,15 +231,30 @@ void onDisplay() {
 	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");	// Get the GPU location of uniform variable MVP
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
 
-	
+
 	pontok->drawPoints();
+	vonalak->drawLines();
 
 	glutSwapBuffers(); // exchange buffers for double buffering
 }
 
 // Key of ASCII code pressed
 void onKeyboard(unsigned char key, int pX, int pY) {
-	if (key == 'd') glutPostRedisplay();         // if d, invalidate display, i.e. redraw
+	switch (key) {
+	case 'p':
+		//cout << state << endl;
+		windowState = DRAW_POINTS;
+		break;
+	case 'l':
+		//cout << state << endl;
+		windowState = DRAW_LINES;
+		break;
+	default:
+		//cout << state << endl;
+		windowState = IDLE;
+		break;
+	}
+	//if (key == 'd') glutPostRedisplay();         // if d, invalidate display, i.e. redraw
 }
 
 // Key of ASCII code released
@@ -204,9 +264,9 @@ void onKeyboardUp(unsigned char key, int pX, int pY) {
 // Move mouse with key pressed
 void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the cursor in the coordinate system of the operation system
 	// Convert to normalized device space
-	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
-	float cY = 1.0f - 2.0f * pY / windowHeight;
-	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
+	//float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
+	//float cY = 1.0f - 2.0f * pY / windowHeight;
+	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 }
 
 // Mouse click event
@@ -214,23 +274,71 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 	// Convert to normalized device space
 	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 	float cY = 1.0f - 2.0f * pY / windowHeight;
-	
-	/*
-	char * buttonStat;
-	switch (state) {
-	case GLUT_DOWN: buttonStat = "pressed"; break;
-	case GLUT_UP:   buttonStat = "released"; break;
-	}
-	*/
 
-	switch (button) {
-	case GLUT_LEFT_BUTTON:   
-		printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
-		pontok->addPoint(vec2(cX, cY));
-		glutPostRedisplay();
-		break;
-	case GLUT_MIDDLE_BUTTON: printf("Middle button at (%3.2f, %3.2f)\n", cX, cY); break;
-	case GLUT_RIGHT_BUTTON:  printf("Right button at (%3.2f, %3.2f)\n", cX, cY);  break;
+	if (state == GLUT_DOWN) {
+		switch (windowState)
+		{
+		case IDLE:
+			cout << windowState << endl;
+			break;
+		case DRAW_POINTS:
+			switch (button) {
+			case GLUT_LEFT_BUTTON:
+				cout << windowState << endl;
+				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
+				pontok->addPoint(vec2(cX, cY));
+				//glutPostRedisplay();
+				break;
+				//case GLUT_MIDDLE_BUTTON: printf("Middle button at (%3.2f, %3.2f)\n", cX, cY); break;
+				//case GLUT_RIGHT_BUTTON:  printf("Right button at (%3.2f, %3.2f)\n", cX, cY);  break;
+			}
+			break;
+		case DRAW_LINES:
+			switch (button) {
+			case GLUT_LEFT_BUTTON:
+				cout << windowState << endl;
+				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
+				//line hozzaadasa ide
+				vec2 cP(cX, cY);
+				const vec2* clickedPoint = pontok->pointNearby(cP);
+				if (clickedPoint != nullptr) {
+					vec2 temp(clickedPoint->x, clickedPoint->y);
+					endpoint1 = temp;
+					cout << endpoint1.x << " " << endpoint1.y << endl;
+					windowState = POINT_CHOSEN;
+				}
+				break;
+			}
+			break;
+			//case GLUT_MIDDLE_BUTTON: printf("Middle button at (%3.2f, %3.2f)\n", cX, cY); break;
+			//case GLUT_RIGHT_BUTTON:  printf("Right button at (%3.2f, %3.2f)\n", cX, cY);  break;
+			//}
+		case POINT_CHOSEN:
+			switch (button) {
+			case GLUT_LEFT_BUTTON:
+				cout << windowState << endl;
+				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
+				//line hozzaadasa ide
+				vec2 cP(cX, cY);
+				const vec2* clickedPoint = pontok->pointNearby(cP);
+				if (clickedPoint != NULL) {
+					vec2 temp(clickedPoint->x, clickedPoint->y);
+					endpoint2 = temp;
+					//cout << temp.x << " " << temp.y << " " << endpoints[1].x << " " << endpoints[1].y << endl;
+					cout << endpoint1.x << " " << endpoint1.y << " " << endpoint2.x << " " << endpoint2.y << endl;
+					windowState = DRAW_LINES;
+					
+					vonalak->addLine(Line(endpoint1, endpoint2), endpoint1, endpoint2);
+					
+					glutPostRedisplay();
+				}
+
+				//glutPostRedisplay();
+
+				break;
+			}
+			break;
+		}
 	}
 }
 
