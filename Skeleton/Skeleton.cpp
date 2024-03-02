@@ -69,13 +69,14 @@ GPUProgram gpuProgram; // vertex and fragment shaders
 
 enum WindowState {
 	IDLE = 0,
-	DRAW_POINTS = 1,
-	DRAW_LINES = 2,
-	POINT_SELECTED = 3,
-	MOVE_LINE = 4,
-	MOVE_LINE_SELECTED = 5,
-	LINE_INTERSECTION = 6,
-	LINE_INTERSECTION_SELECTED = 7
+	DRAW_POINTS,
+	DRAW_LINES,
+	POINT_SELECTED,
+	MOVE_LINE_ONE_SELECTED,
+	MOVE_LINE_TWO_SELECTED,
+	MOVE_LINE,
+	LINE_INTERSECTION,
+	LINE_INTERSECTION_SELECTED
 };
 
 int windowState = WindowState::IDLE;
@@ -290,27 +291,27 @@ public:
 		}
 	}
 
-	bool clickedLine(vec2 p) {
+	void clickedLine(vec2 p) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
-				if (selectedLines.size() <= 2) {
+				if (selectedLines.size() < 2) {
 					selectedLines.push_back(lineIt);
 					cout << "vonal kivalasztva" << endl;
-					return true;
+				}
+				if (selectedLines.size() == 2) {
+					if (windowState == LINE_INTERSECTION)
+						addPointAtIntersection();
 				}
 			}
 		}
-		return false;
 	}
 
 	void addPointAtIntersection() {
-		if (selectedLines.size() == 2) {
-			Line tempLine = selectedLines.back();
-			selectedLines.pop_back();
-			vec2* intersectPoint = tempLine.intersectPoint(selectedLines.back());
-			selectedLines.pop_back();
-			pontok->addPoint(*intersectPoint);
-		}
+		Line tempLine = selectedLines.back();
+		selectedLines.pop_back();
+		vec2* intersectPoint = tempLine.intersectPoint(selectedLines.back());
+		selectedLines.pop_back();
+		pontok->addPoint(*intersectPoint);
 	}
 
 	void draw() {
@@ -450,21 +451,26 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				}
 			}
 			break;
-		case MOVE_LINE:
-			break;
-		case LINE_INTERSECTION:
+		/*case MOVE_LINE_ONE_SELECTED:
 			if (vonalak->clickedLine(vec2(cX, cY))) {
-				windowState = LINE_INTERSECTION_SELECTED;
+				windowState = MOVE_LINE_TWO_SELECTED;
 			}
 			break;
-		case LINE_INTERSECTION_SELECTED:
+		case MOVE_LINE_TWO_SELECTED:
+			if (vonalak->clickedLine(vec2(cX, cY))) {
+				windowState = MOVE_LINE;
+				break;
+			}
+			break;*/
+		case LINE_INTERSECTION:
+			vonalak->clickedLine(vec2(cX, cY));
+			break;
+		/*case LINE_INTERSECTION_SELECTED:
 			if (vonalak->clickedLine(vec2(cX, cY))) {
 				vonalak->addPointAtIntersection();
 				windowState = LINE_INTERSECTION;
-				break;
 			}
-			else
-				break;
+			break;*/
 		}
 	}
 }
