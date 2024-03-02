@@ -72,11 +72,8 @@ enum WindowState {
 	DRAW_POINTS,
 	DRAW_LINES,
 	POINT_SELECTED,
-	MOVE_LINE_ONE_SELECTED,
-	MOVE_LINE_TWO_SELECTED,
 	MOVE_LINE,
-	LINE_INTERSECTION,
-	LINE_INTERSECTION_SELECTED
+	LINE_INTERSECTION
 };
 
 int windowState = WindowState::IDLE;
@@ -291,19 +288,32 @@ public:
 		}
 	}
 
-	void clickedLine(vec2 p) {
+	void selectLineForIntersect(vec2 p) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
 				if (selectedLines.size() < 2) {
 					selectedLines.push_back(lineIt);
-					cout << "vonal kivalasztva" << endl;
+					cout << "vonal kivalasztva kereszetezhez" << endl;
 				}
 				if (selectedLines.size() == 2) {
-					if (windowState == LINE_INTERSECTION)
-						addPointAtIntersection();
+					addPointAtIntersection();
 				}
 			}
 		}
+	}
+
+	void selectLineForMove(vec2 p) {
+		for (Line& lineIt : lines) {
+			if (lineIt.pointOnLine(p)) {
+				selectedLines.push_back(lineIt);
+				cout << "vonal kivalasztva mozgatashoz" << endl;
+				// TODO mozgatas matek
+			}
+		}
+	}
+
+	void emptySelectedArray() {
+		selectedLines.clear();
 	}
 
 	void addPointAtIntersection() {
@@ -382,9 +392,11 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		windowState = DRAW_LINES;
 		break;
 	case 'm':
+		vonalak->emptySelectedArray();
 		windowState = MOVE_LINE;
 		break;
 	case 'i':
+		vonalak->emptySelectedArray();
 		windowState = LINE_INTERSECTION;
 		break;
 	default:
@@ -400,9 +412,13 @@ void onKeyboardUp(unsigned char key, int pX, int pY) {
 // Move mouse with key pressed
 void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the cursor in the coordinate system of the operation system
 	// Convert to normalized device space
-	//float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
-	//float cY = 1.0f - 2.0f * pY / windowHeight;
-	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
+	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
+	float cY = 1.0f - 2.0f * pY / windowHeight;
+	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
+
+	if (windowState == MOVE_LINE) {
+
+	}
 }
 
 // Mouse click event
@@ -451,26 +467,12 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				}
 			}
 			break;
-		/*case MOVE_LINE_ONE_SELECTED:
-			if (vonalak->clickedLine(vec2(cX, cY))) {
-				windowState = MOVE_LINE_TWO_SELECTED;
-			}
+		case MOVE_LINE:
+			vonalak->selectLineForMove(vec2(cX, cY));
 			break;
-		case MOVE_LINE_TWO_SELECTED:
-			if (vonalak->clickedLine(vec2(cX, cY))) {
-				windowState = MOVE_LINE;
-				break;
-			}
-			break;*/
 		case LINE_INTERSECTION:
-			vonalak->clickedLine(vec2(cX, cY));
+			vonalak->selectLineForIntersect(vec2(cX, cY));
 			break;
-		/*case LINE_INTERSECTION_SELECTED:
-			if (vonalak->clickedLine(vec2(cX, cY))) {
-				vonalak->addPointAtIntersection();
-				windowState = LINE_INTERSECTION;
-			}
-			break;*/
 		}
 	}
 }
