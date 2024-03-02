@@ -233,13 +233,17 @@ public:
 		return vertices;
 	}
 
-	void move(vec2 point) {
-
+	Line* move(vec2 point) {
+		cP0 = point;
+		cout << "p0: " << cP0.x << " " << cP0.y << endl;
+		C = -1 * cNormalVector.x * cP0.x + -1 * cNormalVector.y * cP0.y;
+		return this;
 	}
 };
 
 class LineCollection {
 	Object endPoints;
+	vector<vec2> constructionPoints;
 	vector<Line> lines;
 	vector<Line> selectedLines;
 public:
@@ -248,25 +252,15 @@ public:
 	}
 
 	void addVertex(vec2 vtx) {
-		endPoints.getVtxArray().push_back(vtx);
-	}
-
-	// eltávolítja az utoljára hozzáadott elemet, ha nem kerül kiválasztásra második pont
-	// nem biztos hogy kelleni fog
-	void removeLastVertex() {
-		// csak akkor vegye ki ha páratlan elem van benne
-		if (endPoints.getVtxArray().size() % 2 == 1) {
-			endPoints.getVtxArray().pop_back();
+		if (constructionPoints.size() < 2) {
+			constructionPoints.push_back(vtx);
 		}
-	}
-	
-	void addLine() {
-		if (endPoints.getVtxArray().size() % 2 == 0) {
+		if (constructionPoints.size() == 2) {
 			// két utolsó elemet kiveszi a vtx-ek közül
-			vec2 p1 = endPoints.getVtxArray().back();
-			endPoints.getVtxArray().pop_back();
-			vec2 p2 = endPoints.getVtxArray().back();
-			endPoints.getVtxArray().pop_back();
+			vec2 p1 = constructionPoints.back();
+			constructionPoints.pop_back();
+			vec2 p2 = constructionPoints.back();
+			constructionPoints.pop_back();
 
 			// ezekbõl létrehozza a vonalat és elteszi
 			Line newLine(p1, p2);
@@ -306,10 +300,13 @@ public:
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
 				selectedLines.push_back(lineIt);
-				cout << "vonal kivalasztva mozgatashoz" << endl;
-				// TODO mozgatas matek
+				cout << "egyenes kivalasztva mozgatashoz" << endl;
 			}
 		}
+	}
+
+	void move(vec2 p1) {
+		selectedLines.back().move(p1);
 	}
 
 	void emptySelectedArray() {
@@ -345,13 +342,12 @@ void onInitialization() {
 	//pontok->addPoint(vec2(0.0f, 0.5f));
 	//pontok->addPoint(vec2(0.5f, 0.0f));
 	//pontok->addPoint(vec2(0.5f, 0.5f));
-	/*
+	
 	pontok->addPoint(vec2(0.3f, 0.0f));
 	pontok->addPoint(vec2(0.2f, 0.2f));
 	
 	vonalak->addVertex(vec2(0.2f, 0.2f));
 	vonalak->addVertex(vec2(0.3f, 0.0f));
-	vonalak->addLine();*/
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
@@ -414,10 +410,11 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	// Convert to normalized device space
 	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 	float cY = 1.0f - 2.0f * pY / windowHeight;
-	printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
+	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 
 	if (windowState == MOVE_LINE) {
-
+		vonalak->move(vec2(cX, cY));
+		cout << "at: " << cX << " " << cY << endl;
 	}
 }
 
@@ -444,26 +441,7 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
 				if (clickedPoint != nullptr) {
-					vec2 temp(clickedPoint->x, clickedPoint->y);
-					vonalak->addVertex(temp);
-					windowState = POINT_SELECTED;
-				}
-			}
-			break;
-		case POINT_SELECTED:
-			if (button == GLUT_LEFT_BUTTON) {
-				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
-				//line hozzaadasa ide
-				vec2 cP(cX, cY);
-				const vec2* clickedPoint = pontok->pointNearby(cP);
-				if (clickedPoint != nullptr) {
-					vec2 temp(clickedPoint->x, clickedPoint->y);
-					windowState = DRAW_LINES;
-
-					vonalak->addVertex(temp);
-					vonalak->addLine();
-
-					glutPostRedisplay();
+					vonalak->addVertex(*clickedPoint);
 				}
 			}
 			break;
