@@ -73,6 +73,7 @@ enum WindowState {
 	DRAW_LINES,
 	POINT_SELECTED,
 	MOVE_LINE,
+	MOVING_LINE,
 	LINE_INTERSECTION
 };
 
@@ -96,6 +97,10 @@ public:
 
 	vector<vec2>& getVtxArray() {
 		return vtx;
+	}
+
+	void removeVtx(int index) {
+		vtx.erase(vtx.begin() + index);
 	}
 
 	void updateGPU() {
@@ -145,6 +150,7 @@ class Line {
 	vec2 cP0;
 	vec2 cParallelVector;
 	vec2 cNormalVector;
+	vector<vec2> lineEnds;
 	// implicit egyenlet parameterek
 protected:
 	float A, B, C;
@@ -181,6 +187,11 @@ public:
 		return false;
 	}
 
+	void addVtx(vec2 vtx1, vec2 vtx2) {
+		lineEnds.push_back(vtx1);
+		lineEnds.push_back(vtx2);
+	}
+
 	// viewport negyzet oldalaival valo talalkozas pontjait adja vissza
 	vector<vec2> inViewPort() {
 		vector<vec2> vertices;
@@ -194,6 +205,7 @@ public:
 			if (intersect->x >= -1 && intersect->x <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
+				lineEnds.push_back(*intersect);
 			}
 		}
 
@@ -205,6 +217,7 @@ public:
 			if (intersect->x >= -1 && intersect->x <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
+				lineEnds.push_back(*intersect);
 			}
 		}
 		
@@ -216,6 +229,7 @@ public:
 			if (intersect->y >= -1 && intersect->y <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
+				lineEnds.push_back(*intersect);
 			}
 		}
 
@@ -227,17 +241,17 @@ public:
 			if (intersect->y >= -1 && intersect->y <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
+				lineEnds.push_back(*intersect);
 			}
 		}
 		
 		return vertices;
 	}
 
-	Line* move(vec2 point) {
+	void move(vec2 point) {
 		cP0 = point;
 		cout << "p0: " << cP0.x << " " << cP0.y << endl;
 		C = -1 * cNormalVector.x * cP0.x + -1 * cNormalVector.y * cP0.y;
-		return this;
 	}
 };
 
@@ -245,7 +259,7 @@ class LineCollection {
 	Object endPoints;
 	vector<vec2> constructionPoints;
 	vector<Line> lines;
-	vector<Line> selectedLines;
+	vector<Line*> selectedLines;
 public:
 	LineCollection() {
 		endPoints = Object();
@@ -271,14 +285,18 @@ public:
 
 			// kapott két pontot visszateszi vtxbe, ez alapjan rajzolható a vonal
 			endPoints.getVtxArray().push_back(viewPortI.back());
+			//lines.back().addVtx(viewPortI.back());
 			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
 			viewPortI.pop_back();
 
 			endPoints.getVtxArray().push_back(viewPortI.back());
+			//lines.back().addVtx(viewPortI.back());
 			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
 			viewPortI.pop_back();
 
 			endPoints.updateGPU();
+
+			constructionPoints.clear();
 		}
 	}
 
@@ -286,7 +304,7 @@ public:
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
 				if (selectedLines.size() < 2) {
-					selectedLines.push_back(lineIt);
+					selectedLines.push_back(&lineIt);
 					cout << "vonal kivalasztva kereszetezhez" << endl;
 				}
 				if (selectedLines.size() == 2) {
@@ -299,14 +317,16 @@ public:
 	void selectLineForMove(vec2 p) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
-				selectedLines.push_back(lineIt);
+				selectedLines.push_back(&lineIt);
 				cout << "egyenes kivalasztva mozgatashoz" << endl;
+				windowState = MOVING_LINE;
+				break;
 			}
 		}
 	}
 
 	void move(vec2 p1) {
-		selectedLines.back().move(p1);
+		
 	}
 
 	void emptySelectedArray() {
@@ -314,9 +334,9 @@ public:
 	}
 
 	void addPointAtIntersection() {
-		Line tempLine = selectedLines.back();
+		Line* tempLine = selectedLines.back();
 		selectedLines.pop_back();
-		vec2* intersectPoint = tempLine.intersectPoint(selectedLines.back());
+		vec2* intersectPoint = tempLine->intersectPoint(*selectedLines.back());
 		selectedLines.pop_back();
 		pontok->addPoint(*intersectPoint);
 	}
@@ -412,7 +432,7 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 
-	if (windowState == MOVE_LINE) {
+	if (windowState == MOVING_LINE) {
 		vonalak->move(vec2(cX, cY));
 		cout << "at: " << cX << " " << cY << endl;
 	}
