@@ -71,9 +71,11 @@ enum WindowState {
 	IDLE = 0,
 	DRAW_POINTS = 1,
 	DRAW_LINES = 2,
-	POINT_CHOSEN = 3,
+	POINT_SELECTED = 3,
 	MOVE_LINE = 4,
-	LINE_INTERSECTION = 5
+	MOVE_LINE_SELECTED = 5,
+	LINE_INTERSECTION = 6,
+	LINE_INTERSECTION_SELECTED = 7
 };
 
 int windowState = WindowState::IDLE;
@@ -139,6 +141,8 @@ public:
 	}
 };
 
+PointCollection* pontok;
+
 class Line {
 	vec2 cP0;
 	vec2 cParallelVector;
@@ -172,7 +176,8 @@ public:
 	}
 
 	bool pointOnLine(vec2 point) {
-		if (A * point.x + B * point.y + C == 0) {
+		float pointEq = A * point.x + B * point.y + C;
+		if (pointEq <= 0.01f && pointEq >= -0.01f) {
 			return true;
 		}
 		return false;
@@ -238,6 +243,7 @@ public:
 class LineCollection {
 	Object endPoints;
 	vector<Line> lines;
+	vector<Line> selectedLines;
 public:
 	LineCollection() {
 		endPoints = Object();
@@ -248,6 +254,7 @@ public:
 	}
 
 	// eltávolítja az utoljára hozzáadott elemet, ha nem kerül kiválasztásra második pont
+	// nem biztos hogy kelleni fog
 	void removeLastVertex() {
 		// csak akkor vegye ki ha páratlan elem van benne
 		if (endPoints.getVtxArray().size() % 2 == 1) {
@@ -283,13 +290,35 @@ public:
 		}
 	}
 
+	bool clickedLine(vec2 p) {
+		for (Line& lineIt : lines) {
+			if (lineIt.pointOnLine(p)) {
+				if (selectedLines.size() <= 2) {
+					selectedLines.push_back(lineIt);
+					cout << "vonal kivalasztva" << endl;
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	void addPointAtIntersection() {
+		if (selectedLines.size() == 2) {
+			Line tempLine = selectedLines.back();
+			selectedLines.pop_back();
+			vec2* intersectPoint = tempLine.intersectPoint(selectedLines.back());
+			selectedLines.pop_back();
+			pontok->addPoint(*intersectPoint);
+		}
+	}
+
 	void draw() {
 		//cout << "drawlines" << endl;
 		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
 	}
 };
 
-PointCollection* pontok;
 LineCollection* vonalak;
 
 // Initialization, create an OpenGL context
@@ -400,17 +429,17 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				if (clickedPoint != nullptr) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
 					vonalak->addVertex(temp);
-					windowState = POINT_CHOSEN;
+					windowState = POINT_SELECTED;
 				}
 			}
 			break;
-		case POINT_CHOSEN:
+		case POINT_SELECTED:
 			if (button == GLUT_LEFT_BUTTON) {
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				//line hozzaadasa ide
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
-				if (clickedPoint != NULL) {
+				if (clickedPoint != nullptr) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
 					windowState = DRAW_LINES;
 
@@ -424,8 +453,18 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 		case MOVE_LINE:
 			break;
 		case LINE_INTERSECTION:
-
+			if (vonalak->clickedLine(vec2(cX, cY))) {
+				windowState = LINE_INTERSECTION_SELECTED;
+			}
 			break;
+		case LINE_INTERSECTION_SELECTED:
+			if (vonalak->clickedLine(vec2(cX, cY))) {
+				vonalak->addPointAtIntersection();
+				windowState = LINE_INTERSECTION;
+				break;
+			}
+			else
+				break;
 		}
 	}
 }
