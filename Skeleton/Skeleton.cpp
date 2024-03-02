@@ -71,7 +71,9 @@ enum WindowState {
 	IDLE = 0,
 	DRAW_POINTS = 1,
 	DRAW_LINES = 2,
-	POINT_CHOSEN = 3
+	POINT_CHOSEN = 3,
+	MOVE_LINE = 4,
+	LINE_INTERSECTION = 5
 };
 
 int windowState = WindowState::IDLE;
@@ -124,8 +126,8 @@ public:
 	}
 	const vec2* pointNearby(vec2 click) {
 		for (const vec2& vertex : points.getVtxArray()) {
-			if (vertex.x >= click.x - 0.01f && vertex.x <= click.x + 0.01f
-				&& vertex.y >= click.y - 0.01f && vertex.y <= click.y + 0.01f) {
+			if (vertex.x >= click.x - 0.015f && vertex.x <= click.x + 0.015f
+				&& vertex.y >= click.y - 0.015f && vertex.y <= click.y + 0.015f) {
 				//cout << "kijelolve: " << vertex.x  << " " << vertex.y << endl;
 				return &vertex;
 			}
@@ -148,13 +150,13 @@ public:
 	Line(vec2 p1, vec2 p2) {
 		cP0 = p1;
 		cParallelVector = p2 - p1;
-		cout << "iranyvektor: " << cParallelVector.x << " " << cParallelVector.y << endl;
+		//cout << "iranyvektor: " << cParallelVector.x << " " << cParallelVector.y << endl;
 		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
-		cout << "normalvektor: " << cNormalVector.x << " " << cNormalVector.y << " ";
+		//cout << "normalvektor: " << cNormalVector.x << " " << cNormalVector.y << " ";
 		A = cNormalVector.x;
 		B = cNormalVector.y;
 		C = -1 * cNormalVector.x * p1.x + -1 * cNormalVector.y * p1.y;
-		cout << C << endl;
+		//cout << C << endl;
 	}
 
 	vec2* intersectPoint(Line otherLine) {
@@ -344,19 +346,21 @@ void onDisplay() {
 void onKeyboard(unsigned char key, int pX, int pY) {
 	switch (key) {
 	case 'p':
-		//cout << state << endl;
 		windowState = DRAW_POINTS;
 		break;
 	case 'l':
-		//cout << state << endl;
 		windowState = DRAW_LINES;
 		break;
+	case 'm':
+		windowState = MOVE_LINE;
+		break;
+	case 'i':
+		windowState = LINE_INTERSECTION;
+		break;
 	default:
-		//cout << state << endl;
 		windowState = IDLE;
 		break;
 	}
-	//if (key == 'd') glutPostRedisplay();         // if d, invalidate display, i.e. redraw
 }
 
 // Key of ASCII code released
@@ -378,47 +382,30 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 
 	if (state == GLUT_DOWN) {
-		switch (windowState)
-		{
+		switch (windowState) {
 		case IDLE:
 			printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
-			//cout << windowState << endl;
 			break;
 		case DRAW_POINTS:
-			switch (button) {
-			case GLUT_LEFT_BUTTON:
-				//cout << windowState << endl;
+			if (button == GLUT_LEFT_BUTTON) {
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				pontok->addPoint(vec2(cX, cY));
-				//glutPostRedisplay();
-				break;
-				//case GLUT_MIDDLE_BUTTON: printf("Middle button at (%3.2f, %3.2f)\n", cX, cY); break;
-				//case GLUT_RIGHT_BUTTON:  printf("Right button at (%3.2f, %3.2f)\n", cX, cY);  break;
 			}
 			break;
 		case DRAW_LINES:
-			switch (button) {
-			case GLUT_LEFT_BUTTON:
-				//cout << windowState << endl;
+			if (button == GLUT_LEFT_BUTTON) {
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
 				if (clickedPoint != nullptr) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
-					// itt kene eltartolni a pontot az egyeneshez
 					vonalak->addVertex(temp);
 					windowState = POINT_CHOSEN;
 				}
-				break;
 			}
 			break;
-			//case GLUT_MIDDLE_BUTTON: printf("Middle button at (%3.2f, %3.2f)\n", cX, cY); break;
-			//case GLUT_RIGHT_BUTTON:  printf("Right button at (%3.2f, %3.2f)\n", cX, cY);  break;
-			//}
 		case POINT_CHOSEN:
-			switch (button) {
-			case GLUT_LEFT_BUTTON:
-				//cout << windowState << endl;
+			if (button == GLUT_LEFT_BUTTON) {
 				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				//line hozzaadasa ide
 				vec2 cP(cX, cY);
@@ -426,18 +413,18 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				if (clickedPoint != NULL) {
 					vec2 temp(clickedPoint->x, clickedPoint->y);
 					windowState = DRAW_LINES;
-					
-					// itt kene eltartolni a pontot az egyeneshez
+
 					vonalak->addVertex(temp);
 					vonalak->addLine();
-					
+
 					glutPostRedisplay();
 				}
-
-				//glutPostRedisplay();
-
-				break;
 			}
+			break;
+		case MOVE_LINE:
+			break;
+		case LINE_INTERSECTION:
+
 			break;
 		}
 	}
