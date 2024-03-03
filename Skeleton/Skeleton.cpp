@@ -99,10 +99,6 @@ public:
 		return vtx;
 	}
 
-	void removeVtx(int index) {
-		vtx.erase(vtx.begin() + index);
-	}
-
 	void updateGPU() {
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -187,11 +183,6 @@ public:
 		}
 		return false;
 	}
-
-	/*void addVtx(vec2 vtx1, vec2 vtx2) {
-		lineEnds.push_back(vtx1);
-		lineEnds.push_back(vtx2);
-	}*/
 
 	vector<vec2> getEnds() {
 		return lineEnds;
@@ -319,9 +310,12 @@ public:
 	void selectLineForMove(vec2 p) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p)) {
-				selectedLines.push_back(&lineIt);
-				cout << "egyenes kivalasztva mozgatashoz" << endl;
-				windowState = MOVING_LINE;
+				//selectedLines.push_back(&lineIt);
+				lineIt.move(p);
+				lineIt.inViewPort();
+				updateEndPoints();
+				endPoints.updateGPU();
+
 				break;
 			}
 		}
@@ -436,8 +430,8 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
 
-	if (windowState == MOVING_LINE) {
-		vonalak->move(vec2(cX, cY));
+	if (windowState == MOVE_LINE) {
+		vonalak->selectLineForMove(vec2(cX, cY));
 		cout << "at: " << cX << " " << cY << endl;
 	}
 }
@@ -469,9 +463,9 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				}
 			}
 			break;
-		case MOVE_LINE:
+		/*case MOVE_LINE:
 			vonalak->selectLineForMove(vec2(cX, cY));
-			break;
+			break;*/
 		case LINE_INTERSECTION:
 			vonalak->selectLineForIntersect(vec2(cX, cY));
 			break;
