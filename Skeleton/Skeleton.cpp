@@ -151,8 +151,9 @@ class Line {
 	vec2 cParallelVector;
 	vec2 cNormalVector;
 	vector<vec2> lineEnds;
-	// implicit egyenlet parameterek
+	
 protected:
+	// implicit egyenlet parameterek
 	float A, B, C;
 public:
 	Line(vec2 p1, vec2 p2) {
@@ -187,13 +188,17 @@ public:
 		return false;
 	}
 
-	void addVtx(vec2 vtx1, vec2 vtx2) {
+	/*void addVtx(vec2 vtx1, vec2 vtx2) {
 		lineEnds.push_back(vtx1);
 		lineEnds.push_back(vtx2);
+	}*/
+
+	vector<vec2> getEnds() {
+		return lineEnds;
 	}
 
 	// viewport negyzet oldalaival valo talalkozas pontjait adja vissza
-	vector<vec2> inViewPort() {
+	void inViewPort() {
 		vector<vec2> vertices;
 		int numberOfIntersects = 0;
 
@@ -205,7 +210,6 @@ public:
 			if (intersect->x >= -1 && intersect->x <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
-				lineEnds.push_back(*intersect);
 			}
 		}
 
@@ -217,7 +221,6 @@ public:
 			if (intersect->x >= -1 && intersect->x <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
-				lineEnds.push_back(*intersect);
 			}
 		}
 		
@@ -229,7 +232,6 @@ public:
 			if (intersect->y >= -1 && intersect->y <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
-				lineEnds.push_back(*intersect);
 			}
 		}
 
@@ -241,11 +243,11 @@ public:
 			if (intersect->y >= -1 && intersect->y <= 1) {
 				numberOfIntersects++;
 				vertices.push_back(*intersect);
-				lineEnds.push_back(*intersect);
 			}
 		}
 		
-		return vertices;
+		//return vertices;
+		lineEnds = vertices;
 	}
 
 	void move(vec2 point) {
@@ -265,34 +267,34 @@ public:
 		endPoints = Object();
 	}
 
+	void updateEndPoints() {
+		endPoints.getVtxArray().clear();
+
+		for (Line& lineIt : lines) {
+			vector<vec2> ends = lineIt.getEnds();
+			endPoints.getVtxArray().push_back(ends.back());
+			ends.pop_back();
+			endPoints.getVtxArray().push_back(ends.back());
+		}
+	}
+
 	void addVertex(vec2 vtx) {
 		if (constructionPoints.size() < 2) {
 			constructionPoints.push_back(vtx);
 		}
 		if (constructionPoints.size() == 2) {
-			// két utolsó elemet kiveszi a vtx-ek közül
+			// két utolsó elemet kiveszi a constructionpointok közül
 			vec2 p1 = constructionPoints.back();
 			constructionPoints.pop_back();
 			vec2 p2 = constructionPoints.back();
 			constructionPoints.pop_back();
 
-			// ezekbõl létrehozza a vonalat és elteszi
+			// ezekbõl létrehozza a vonalat
 			Line newLine(p1, p2);
+			
+			newLine.inViewPort();
 			lines.push_back(newLine);
-
-			// kiszámolja hol metszi a viewport szélét
-			vector<vec2> viewPortI = newLine.inViewPort();
-
-			// kapott két pontot visszateszi vtxbe, ez alapjan rajzolható a vonal
-			endPoints.getVtxArray().push_back(viewPortI.back());
-			//lines.back().addVtx(viewPortI.back());
-			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
-			viewPortI.pop_back();
-
-			endPoints.getVtxArray().push_back(viewPortI.back());
-			//lines.back().addVtx(viewPortI.back());
-			//cout << endPoints.getVtxArray().back().x << " " << endPoints.getVtxArray().back().y << endl;
-			viewPortI.pop_back();
+			updateEndPoints();
 
 			endPoints.updateGPU();
 
@@ -326,7 +328,9 @@ public:
 	}
 
 	void move(vec2 p1) {
-		
+		selectedLines.back()->move(p1);
+		updateEndPoints();
+		endPoints.updateGPU();
 	}
 
 	void emptySelectedArray() {
@@ -363,11 +367,11 @@ void onInitialization() {
 	//pontok->addPoint(vec2(0.5f, 0.0f));
 	//pontok->addPoint(vec2(0.5f, 0.5f));
 	
-	pontok->addPoint(vec2(0.3f, 0.0f));
+	/*pontok->addPoint(vec2(0.3f, 0.0f));
 	pontok->addPoint(vec2(0.2f, 0.2f));
 	
 	vonalak->addVertex(vec2(0.2f, 0.2f));
-	vonalak->addVertex(vec2(0.3f, 0.0f));
+	vonalak->addVertex(vec2(0.3f, 0.0f));*/
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
