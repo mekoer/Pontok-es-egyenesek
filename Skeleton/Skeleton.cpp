@@ -31,10 +31,7 @@
 // Tudomasul veszem, hogy a forrasmegjeloles kotelmenek megsertese eseten a hazifeladatra adhato pontokat
 // negativ elojellel szamoljak el es ezzel parhuzamosan eljaras is indul velem szemben.
 //=============================================================================================
-#include "framework.h"
-
-//TODO: boolok gyomlalasa
-		
+#include "framework.h"		
 
 class Object;
 class PointCollection;
@@ -92,7 +89,6 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
 		glEnableVertexAttribArray(0);
-		// two floats/attrib, not fixed-point, stride, offset: tightly packed
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 	}
 
@@ -128,15 +124,15 @@ public:
 	}
 	const vec2* pointNearby(vec2 click) {
 		for (const vec2& vertex : points.getVtxArray()) {
-			if (vertex.x >= click.x - 0.015f && vertex.x <= click.x + 0.015f
-				&& vertex.y >= click.y - 0.015f && vertex.y <= click.y + 0.015f) {
+			if (vertex.x >= click.x - 0.01f && vertex.x <= click.x + 0.01f
+				&& vertex.y >= click.y - 0.01f && vertex.y <= click.y + 0.01f) {
 				return &vertex;
 			}
 		}
 		return NULL;
 	}
 	void draw() {
-		points.Draw(GL_POINTS, vec3(1.0f, 0.0f, 0.0f));
+		points.Draw(GL_POINTS, vec3(1, 0, 0));
 	}
 };
 
@@ -147,7 +143,7 @@ class Line {
 	vec2 cParallelVector;
 	vec2 cNormalVector;
 	vector<vec2> lineEnds;
-	
+
 protected:
 	// implicit egyenlet parameterek
 	float A, B, C;
@@ -168,12 +164,12 @@ public:
 			cParallelVector.x, cParallelVector.y);
 	}
 
-	vec2* intersectPoint(Line otherLine) {
+	vec2 intersectPoint(Line otherLine) {
 		vec2 intersectPoint;
 		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / (otherLine.A * B - A * otherLine.B);
 		intersectPoint.y = (otherLine.A * C - A * otherLine.C) / (A * otherLine.B - otherLine.A * B);
-		
-		return &intersectPoint;
+
+		return intersectPoint;
 	}
 
 	int pointOnLine(vec2 point) {
@@ -195,48 +191,41 @@ public:
 
 		// top:
 		Line top(vec2(1.0f, 1.0f), vec2(-1.0f, 1.0f));
+		vec2 intersect = intersectPoint(top);
 
-		vec2* intersect = intersectPoint(top);
-		if (intersect != nullptr) {
-			if (intersect->x >= -1 && intersect->x <= 1) {
-				numberOfIntersects++;
-				vertices.push_back(*intersect);
-			}
+		if (intersect.x >= -1 && intersect.x <= 1) {
+			numberOfIntersects++;
+			vertices.push_back(intersect);
 		}
 
 		// bottom:
 		Line bottom(vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f));
-
 		intersect = intersectPoint(bottom);
-		if (intersect != nullptr) {
-			if (intersect->x >= -1 && intersect->x <= 1) {
-				numberOfIntersects++;
-				vertices.push_back(*intersect);
-			}
+		if (intersect.x >= -1 && intersect.x <= 1) {
+			numberOfIntersects++;
+			vertices.push_back(intersect);
 		}
-		
+
 		// right:
 		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
-
 		intersect = intersectPoint(right);
-		if (intersect != nullptr && numberOfIntersects <= 2) {
-			if (intersect->y >= -1 && intersect->y <= 1) {
+		if (numberOfIntersects <= 2) {
+			if (intersect.y >= -1 && intersect.y <= 1) {
 				numberOfIntersects++;
-				vertices.push_back(*intersect);
+				vertices.push_back(intersect);
 			}
 		}
 
 		// left:
 		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
-
 		intersect = intersectPoint(left);
-		if (intersect != nullptr && numberOfIntersects <= 2) {
-			if (intersect->y >= -1 && intersect->y <= 1) {
+		if (numberOfIntersects <= 2) {
+			if (intersect.y >= -1 && intersect.y <= 1) {
 				numberOfIntersects++;
-				vertices.push_back(*intersect);
+				vertices.push_back(intersect);
 			}
 		}
-		
+
 		lineEnds = vertices;
 	}
 
@@ -281,7 +270,7 @@ public:
 			// ezekbõl létrehozza a vonalat
 			Line newLine(p1, p2);
 			newLine.print();
-			
+
 			newLine.inViewPort();
 			lines.push_back(newLine);
 			updateEndPoints();
@@ -305,32 +294,39 @@ public:
 		}
 	}
 
-	void selectLineForMove(vec2 p) {
+	void selectLineForMove(vec2 point) {
 		for (Line& lineIt : lines) {
-			if (lineIt.pointOnLine(p) == 1) {
-				lineIt.move(p);
-				lineIt.inViewPort();
-				updateEndPoints();
-				endPoints.updateGPU();
+			if (lineIt.pointOnLine(point) == 1) {
+				selectedLines.push_back(&lineIt);
 				break;
 			}
 		}
 	}
 
+	void move(vec2 point) {
+		selectedLines.back()->move(point);
+		selectedLines.back()->inViewPort();
+		updateEndPoints();
+		endPoints.updateGPU();
+	}
+
 	void emptySelectedArray() {
 		selectedLines.clear();
+	}
+	vector<Line*> getSelected() {
+		return selectedLines;
 	}
 
 	void addPointAtIntersection() {
 		Line* tempLine = selectedLines.back();
 		selectedLines.pop_back();
-		vec2* intersectPoint = tempLine->intersectPoint(*selectedLines.back());
+		vec2 intersectPoint = tempLine->intersectPoint(*selectedLines.back());
 		selectedLines.pop_back();
-		pontok->addPoint(*intersectPoint);
+		pontok->addPoint(intersectPoint);
 	}
 
 	void draw() {
-		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
+		endPoints.Draw(GL_LINES, vec3(0, 1, 1));
 	}
 };
 
@@ -355,10 +351,6 @@ void onDisplay() {
 	glClearColor(0.2f, 0.2f, 0.2f, 0);     // background color
 	glClear(GL_COLOR_BUFFER_BIT); // clear frame buffer
 
-	// Set color to (0, 1, 0) = green
-	//int location = glGetUniformLocation(gpuProgram.getId(), "color");
-	//glUniform3f(location, 0.0f, 1.0f, 0.0f); // 3 floats
-
 	float MVPtransf[4][4] = { 1, 0, 0, 0,    // MVP matrix, 
 							  0, 1, 0, 0,    // row-major!
 							  0, 0, 1, 0,
@@ -366,11 +358,9 @@ void onDisplay() {
 
 	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");	// Get the GPU location of uniform variable MVP
 	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
-	
-	
 
-	pontok->draw();
 	vonalak->draw();
+	pontok->draw();
 
 	glutSwapBuffers(); // exchange buffers for double buffering
 }
@@ -411,9 +401,15 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	// Convert to normalized device space
 	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 	float cY = 1.0f - 2.0f * pY / windowHeight;
-	
+
 	if (windowState == MOVE_LINE) {
-		vonalak->selectLineForMove(vec2(cX, cY));
+		if (!(vonalak->getSelected().empty())) {
+			if (cX >= -1 && cX <= 1 &&
+				cY >= -1 && cY <= 1) {
+				vonalak->move(vec2(cX, cY));
+				glutPostRedisplay();
+			}
+		}
 	}
 }
 
@@ -441,16 +437,22 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				}
 			}
 			break;
+		case MOVE_LINE:
+			if (button == GLUT_LEFT_BUTTON) {
+				vonalak->emptySelectedArray();
+				vonalak->selectLineForMove(vec2(cX, cY));
+			}
+			break;
 		case LINE_INTERSECTION:
 			vonalak->selectLineForIntersect(vec2(cX, cY));
 			break;
 		}
 	}
+	if (state == GLUT_UP)
+		glutPostRedisplay();
 }
 
 // Idle event indicating that some time elapsed: do animation here
 void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME); // elapsed time since the start of the program
 }
-
-
