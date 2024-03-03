@@ -18,8 +18,8 @@
 //
 // NYILATKOZAT
 // ---------------------------------------------------------------------------------------------
-// Nev    : 
-// Neptun : 
+// Nev    : Mayer Ádám
+// Neptun : XYJP9S
 // ---------------------------------------------------------------------------------------------
 // ezennel kijelentem, hogy a feladatot magam keszitettem, es ha barmilyen segitseget igenybe vettem vagy
 // mas szellemi termeket felhasznaltam, akkor a forrast es az atvett reszt kommentekben egyertelmuen jeloltem.
@@ -32,7 +32,9 @@
 // negativ elojellel szamoljak el es ezzel parhuzamosan eljaras is indul velem szemben.
 //=============================================================================================
 #include "framework.h"
-#include "iostream"
+
+//TODO: boolok gyomlalasa
+		
 
 class Object;
 class PointCollection;
@@ -73,7 +75,6 @@ enum WindowState {
 	DRAW_LINES,
 	POINT_SELECTED,
 	MOVE_LINE,
-	MOVING_LINE,
 	LINE_INTERSECTION
 };
 
@@ -121,15 +122,14 @@ public:
 		points = Object();
 	}
 	void addPoint(vec2 point) {
-		//cout << "pont felveve" << endl;
 		points.getVtxArray().push_back(point);
+		printf("Point added at (%3.2f, %3.2f)\n", point.x, point.y);
 		points.updateGPU();
 	}
 	const vec2* pointNearby(vec2 click) {
 		for (const vec2& vertex : points.getVtxArray()) {
 			if (vertex.x >= click.x - 0.015f && vertex.x <= click.x + 0.015f
 				&& vertex.y >= click.y - 0.015f && vertex.y <= click.y + 0.015f) {
-				//cout << "kijelolve: " << vertex.x  << " " << vertex.y << endl;
 				return &vertex;
 			}
 		}
@@ -155,20 +155,20 @@ public:
 	Line(vec2 p1, vec2 p2) {
 		cP0 = p1;
 		cParallelVector = p2 - p1;
-		//cout << "iranyvektor: " << cParallelVector.x << " " << cParallelVector.y << endl;
 		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
-		//cout << "normalvektor: " << cNormalVector.x << " " << cNormalVector.y << " ";
 		A = cNormalVector.x;
 		B = cNormalVector.y;
 		C = -1 * cNormalVector.x * p1.x + -1 * cNormalVector.y * p1.y;
-		//cout << C << endl;
+	}
+
+	void print() {
+		printf("Line added\n	(%3.2f)x + (%3.2f)y + (%3.2f) = 0\n", A, B, C);
+		printf("	r(t) = (%3.2f, %3.2f) + (%3.2f, %3.2f)t\n",
+			cP0.x, cP0.y,
+			cParallelVector.x, cParallelVector.y);
 	}
 
 	vec2* intersectPoint(Line otherLine) {
-		// a1*b2 - a2*b1 // osztó
-		float denominator = A * otherLine.B - otherLine.A * B;
-		if (denominator == 0) return nullptr;
-
 		vec2 intersectPoint;
 		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / (otherLine.A * B - A * otherLine.B);
 		intersectPoint.y = (otherLine.A * C - A * otherLine.C) / (A * otherLine.B - otherLine.A * B);
@@ -176,24 +176,24 @@ public:
 		return &intersectPoint;
 	}
 
-	bool pointOnLine(vec2 point) {
+	int pointOnLine(vec2 point) {
 		float pointEq = A * point.x + B * point.y + C;
 		if (pointEq <= 0.01f && pointEq >= -0.01f) {
-			return true;
+			return 1;
 		}
-		return false;
+		return 0;
 	}
 
 	vector<vec2> getEnds() {
 		return lineEnds;
 	}
 
-	// viewport negyzet oldalaival valo talalkozas pontjait adja vissza
+	// viewport negyzet oldalaival valo talalkozas pontjait tarolja el
 	void inViewPort() {
 		vector<vec2> vertices;
 		int numberOfIntersects = 0;
 
-		// képernyõ teteje:
+		// top:
 		Line top(vec2(1.0f, 1.0f), vec2(-1.0f, 1.0f));
 
 		vec2* intersect = intersectPoint(top);
@@ -204,7 +204,7 @@ public:
 			}
 		}
 
-		// képernyõ alja:
+		// bottom:
 		Line bottom(vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f));
 
 		intersect = intersectPoint(bottom);
@@ -215,7 +215,7 @@ public:
 			}
 		}
 		
-		// képernyõ jobb oldala:
+		// right:
 		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
 
 		intersect = intersectPoint(right);
@@ -226,7 +226,7 @@ public:
 			}
 		}
 
-		// képernyõ bal oldala:
+		// left:
 		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
 
 		intersect = intersectPoint(left);
@@ -237,13 +237,11 @@ public:
 			}
 		}
 		
-		//return vertices;
 		lineEnds = vertices;
 	}
 
 	void move(vec2 point) {
 		cP0 = point;
-		cout << "p0: " << cP0.x << " " << cP0.y << endl;
 		C = -1 * cNormalVector.x * cP0.x + -1 * cNormalVector.y * cP0.y;
 	}
 };
@@ -282,6 +280,7 @@ public:
 
 			// ezekbõl létrehozza a vonalat
 			Line newLine(p1, p2);
+			newLine.print();
 			
 			newLine.inViewPort();
 			lines.push_back(newLine);
@@ -295,10 +294,9 @@ public:
 
 	void selectLineForIntersect(vec2 p) {
 		for (Line& lineIt : lines) {
-			if (lineIt.pointOnLine(p)) {
+			if (lineIt.pointOnLine(p) == 1) {
 				if (selectedLines.size() < 2) {
 					selectedLines.push_back(&lineIt);
-					cout << "vonal kivalasztva kereszetezhez" << endl;
 				}
 				if (selectedLines.size() == 2) {
 					addPointAtIntersection();
@@ -309,22 +307,14 @@ public:
 
 	void selectLineForMove(vec2 p) {
 		for (Line& lineIt : lines) {
-			if (lineIt.pointOnLine(p)) {
-				//selectedLines.push_back(&lineIt);
+			if (lineIt.pointOnLine(p) == 1) {
 				lineIt.move(p);
 				lineIt.inViewPort();
 				updateEndPoints();
 				endPoints.updateGPU();
-
 				break;
 			}
 		}
-	}
-
-	void move(vec2 p1) {
-		selectedLines.back()->move(p1);
-		updateEndPoints();
-		endPoints.updateGPU();
 	}
 
 	void emptySelectedArray() {
@@ -340,7 +330,6 @@ public:
 	}
 
 	void draw() {
-		//cout << "drawlines" << endl;
 		endPoints.Draw(GL_LINES, vec3(0.0f, 1.0f, 1.0f));
 	}
 };
@@ -356,16 +345,6 @@ void onInitialization() {
 
 	pontok = new PointCollection;
 	vonalak = new LineCollection;
-	//pontok->addPoint(vec2(0.0f, 0.0f));
-	//pontok->addPoint(vec2(0.0f, 0.5f));
-	//pontok->addPoint(vec2(0.5f, 0.0f));
-	//pontok->addPoint(vec2(0.5f, 0.5f));
-	
-	/*pontok->addPoint(vec2(0.3f, 0.0f));
-	pontok->addPoint(vec2(0.2f, 0.2f));
-	
-	vonalak->addVertex(vec2(0.2f, 0.2f));
-	vonalak->addVertex(vec2(0.3f, 0.0f));*/
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
@@ -373,7 +352,7 @@ void onInitialization() {
 
 // Window has become invalid: Redraw
 void onDisplay() {
-	glClearColor(0, 0, 0, 0);     // background color
+	glClearColor(0.2f, 0.2f, 0.2f, 0);     // background color
 	glClear(GL_COLOR_BUFFER_BIT); // clear frame buffer
 
 	// Set color to (0, 1, 0) = green
@@ -400,16 +379,20 @@ void onDisplay() {
 void onKeyboard(unsigned char key, int pX, int pY) {
 	switch (key) {
 	case 'p':
+		printf("Place points\n");
 		windowState = DRAW_POINTS;
 		break;
 	case 'l':
+		printf("Define lines\n");
 		windowState = DRAW_LINES;
 		break;
 	case 'm':
+		printf("Move\n");
 		vonalak->emptySelectedArray();
 		windowState = MOVE_LINE;
 		break;
 	case 'i':
+		printf("Intersect\n");
 		vonalak->emptySelectedArray();
 		windowState = LINE_INTERSECTION;
 		break;
@@ -428,11 +411,9 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	// Convert to normalized device space
 	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 	float cY = 1.0f - 2.0f * pY / windowHeight;
-	//printf("Mouse moved to (%3.2f, %3.2f)\n", cX, cY);
-
+	
 	if (windowState == MOVE_LINE) {
 		vonalak->selectLineForMove(vec2(cX, cY));
-		cout << "at: " << cX << " " << cY << endl;
 	}
 }
 
@@ -445,17 +426,14 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 	if (state == GLUT_DOWN) {
 		switch (windowState) {
 		case IDLE:
-			printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 			break;
 		case DRAW_POINTS:
 			if (button == GLUT_LEFT_BUTTON) {
-				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				pontok->addPoint(vec2(cX, cY));
 			}
 			break;
 		case DRAW_LINES:
 			if (button == GLUT_LEFT_BUTTON) {
-				printf("Left button at (%3.2f, %3.2f)\n", cX, cY);
 				vec2 cP(cX, cY);
 				const vec2* clickedPoint = pontok->pointNearby(cP);
 				if (clickedPoint != nullptr) {
@@ -463,9 +441,6 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 				}
 			}
 			break;
-		/*case MOVE_LINE:
-			vonalak->selectLineForMove(vec2(cX, cY));
-			break;*/
 		case LINE_INTERSECTION:
 			vonalak->selectLineForIntersect(vec2(cX, cY));
 			break;
