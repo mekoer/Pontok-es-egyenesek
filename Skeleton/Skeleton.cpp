@@ -43,11 +43,10 @@ const char* const vertexSource = R"(
 	#version 330				// Shader 3.3
 	precision highp float;		// normal floats, makes no difference on desktop computers
 
-	uniform mat4 MVP;			// uniform variable, the Model-View-Projection transformation matrix
 	layout(location = 0) in vec2 vp;	// Varying input: vp = vertex position is expected in attrib array 0
 
 	void main() {
-		gl_Position = vec4(vp.x, vp.y, 0, 1) * MVP;		// transform vp from modeling space to normalized device space
+		gl_Position = vec4(vp.x, vp.y, 0, 1);		// transform vp from modeling space to normalized device space
 	}
 )";
 
@@ -57,10 +56,10 @@ const char* const fragmentSource = R"(
 	precision highp float;	// normal floats, makes no difference on desktop computers
 	
 	uniform vec3 color;		// uniform variable, the color of the primitive
-	out vec4 outColor;		// computed color of the current pixel
+	out vec3 outColor;		// computed color of the current pixel
 
 	void main() {
-		outColor = vec4(color, 1);	// computed color is the color of the primitive
+		outColor = color;	// computed color is the color of the primitive
 	}
 )";
 
@@ -129,7 +128,7 @@ public:
 				return &vertex;
 			}
 		}
-		return NULL;
+		return nullptr;
 	}
 	void draw() {
 		points.Draw(GL_POINTS, vec3(1, 0, 0));
@@ -160,8 +159,7 @@ public:
 	void print() {
 		printf("Line added\n	(%3.2f)x + (%3.2f)y + (%3.2f) = 0\n", A, B, C);
 		printf("	r(t) = (%3.2f, %3.2f) + (%3.2f, %3.2f)t\n",
-			cP0.x, cP0.y,
-			cParallelVector.x, cParallelVector.y);
+			cP0.x, cP0.y, cParallelVector.x, cParallelVector.y);
 	}
 
 	vec2 intersectPoint(Line otherLine) {
@@ -184,7 +182,6 @@ public:
 		return lineEnds;
 	}
 
-	// viewport negyzet oldalaival valo talalkozas pontjait tarolja el
 	void inViewPort() {
 		vector<vec2> vertices;
 		int numberOfIntersects = 0;
@@ -351,14 +348,6 @@ void onDisplay() {
 	glClearColor(0.2f, 0.2f, 0.2f, 0);     // background color
 	glClear(GL_COLOR_BUFFER_BIT); // clear frame buffer
 
-	float MVPtransf[4][4] = { 1, 0, 0, 0,    // MVP matrix, 
-							  0, 1, 0, 0,    // row-major!
-							  0, 0, 1, 0,
-							  0, 0, 0, 1 };
-
-	int location = glGetUniformLocation(gpuProgram.getId(), "MVP");	// Get the GPU location of uniform variable MVP
-	glUniformMatrix4fv(location, 1, GL_TRUE, &MVPtransf[0][0]);	// Load a 4x4 row-major float matrix to the specified location
-
 	vonalak->draw();
 	pontok->draw();
 
@@ -393,8 +382,7 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 }
 
 // Key of ASCII code released
-void onKeyboardUp(unsigned char key, int pX, int pY) {
-}
+void onKeyboardUp(unsigned char key, int pX, int pY) {}
 
 // Move mouse with key pressed
 void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the cursor in the coordinate system of the operation system
