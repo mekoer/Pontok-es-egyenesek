@@ -207,7 +207,7 @@ public:
 		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
 		intersect = intersectPoint(right);
 		if (numberOfIntersects <= 2) {
-			if (intersect.y >= -1 && intersect.y <= 1) {
+			if (intersect.y > -1 && intersect.y < 1) {
 				numberOfIntersects++;
 				vertices.push_back(intersect);
 			}
@@ -217,7 +217,7 @@ public:
 		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
 		intersect = intersectPoint(left);
 		if (numberOfIntersects <= 2) {
-			if (intersect.y >= -1 && intersect.y <= 1) {
+			if (intersect.y > -1 && intersect.y < 1) {
 				numberOfIntersects++;
 				vertices.push_back(intersect);
 			}
@@ -338,6 +338,9 @@ void onInitialization() {
 
 	pontok = new PointCollection;
 	vonalak = new LineCollection;
+
+	pontok->addPoint(vec2(-0.5f, 0.5f));
+	pontok->addPoint(vec2(0.5f, -0.5f));
 
 	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
