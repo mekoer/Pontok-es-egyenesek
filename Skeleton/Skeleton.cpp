@@ -123,8 +123,7 @@ public:
 	}
 	const vec2* pointNearby(vec2 click) {
 		for (const vec2& vertex : points.getVtxArray()) {
-			if (vertex.x >= click.x - 0.01f && vertex.x <= click.x + 0.01f
-				&& vertex.y >= click.y - 0.01f && vertex.y <= click.y + 0.01f) {
+			if (fabs(vertex.x - click.x) <= 0.01f && fabs(vertex.y - click.y) <= 0.01f) {
 				return &vertex;
 			}
 		}
@@ -171,8 +170,8 @@ public:
 	}
 
 	int pointOnLine(vec2 point) {
-		float pointEq = A * point.x + B * point.y + C;
-		if (pointEq <= 0.01f && pointEq >= -0.01f) {
+		float pointDist = fabs(A * point.x + B * point.y + C) / sqrtf(A*A + B*B);
+		if (fabs(pointDist) <= 0.01f) {
 			return 1;
 		}
 		return 0;
@@ -190,7 +189,7 @@ public:
 		Line top(vec2(1.0f, 1.0f), vec2(-1.0f, 1.0f));
 		vec2 intersect = intersectPoint(top);
 
-		if (intersect.x >= -1 && intersect.x <= 1) {
+		if (fabs(intersect.x) <= 1) {
 			numberOfIntersects++;
 			vertices.push_back(intersect);
 		}
@@ -198,7 +197,7 @@ public:
 		// bottom:
 		Line bottom(vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f));
 		intersect = intersectPoint(bottom);
-		if (intersect.x >= -1 && intersect.x <= 1) {
+		if (fabs(intersect.x) <= 1) {
 			numberOfIntersects++;
 			vertices.push_back(intersect);
 		}
@@ -207,7 +206,7 @@ public:
 		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
 		intersect = intersectPoint(right);
 		if (numberOfIntersects <= 2) {
-			if (intersect.y > -1 && intersect.y < 1) {
+			if (fabs(intersect.y) < 1) {
 				numberOfIntersects++;
 				vertices.push_back(intersect);
 			}
@@ -217,7 +216,7 @@ public:
 		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
 		intersect = intersectPoint(left);
 		if (numberOfIntersects <= 2) {
-			if (intersect.y > -1 && intersect.y < 1) {
+			if (fabs(intersect.y) < 1) {
 				numberOfIntersects++;
 				vertices.push_back(intersect);
 			}
@@ -395,8 +394,7 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 
 	if (windowState == MOVE_LINE) {
 		if (!(vonalak->getSelected().empty())) {
-			if (cX >= -1 && cX <= 1 &&
-				cY >= -1 && cY <= 1) {
+			if (fabs(cX) <= 1 && fabs(cY) <= 1) {
 				vonalak->move(vec2(cX, cY));
 				glutPostRedisplay();
 			}
