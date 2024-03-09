@@ -63,7 +63,7 @@ const char* const fragmentSource = R"(
 	}
 )";
 
-GPUProgram gpuProgram; // vertex and fragment shaders
+GPUProgram gpuProgram;
 
 enum WindowState {
 	IDLE = 0,
@@ -257,13 +257,11 @@ public:
 			constructionPoints.push_back(vtx);
 		}
 		if (constructionPoints.size() == 2) {
-			// két utolsó elemet kiveszi a constructionpointok közül
 			vec2 p1 = constructionPoints.back();
 			constructionPoints.pop_back();
 			vec2 p2 = constructionPoints.back();
 			constructionPoints.pop_back();
 
-			// ezekbõl létrehozza a vonalat
 			Line newLine(p1, p2);
 			newLine.print();
 
@@ -328,7 +326,6 @@ public:
 
 LineCollection* vonalak;
 
-// Initialization, create an OpenGL context
 void onInitialization() {
 	glViewport(0, 0, windowWidth, windowHeight);
 
@@ -341,22 +338,19 @@ void onInitialization() {
 	pontok->addPoint(vec2(-0.5f, 0.5f));
 	pontok->addPoint(vec2(0.5f, -0.5f));
 
-	// create program for the GPU
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
 
-// Window has become invalid: Redraw
 void onDisplay() {
-	glClearColor(0.2f, 0.2f, 0.2f, 0);     // background color
-	glClear(GL_COLOR_BUFFER_BIT); // clear frame buffer
+	glClearColor(0.2f, 0.2f, 0.2f, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	vonalak->draw();
 	pontok->draw();
 
-	glutSwapBuffers(); // exchange buffers for double buffering
+	glutSwapBuffers();
 }
 
-// Key of ASCII code pressed
 void onKeyboard(unsigned char key, int pX, int pY) {
 	switch (key) {
 	case 'p':
@@ -383,13 +377,10 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 	}
 }
 
-// Key of ASCII code released
 void onKeyboardUp(unsigned char key, int pX, int pY) {}
 
-// Move mouse with key pressed
-void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the cursor in the coordinate system of the operation system
-	// Convert to normalized device space
-	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
+void onMouseMotion(int pX, int pY) {
+	float cX = 2.0f * pX / windowWidth - 1;
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 
 	if (windowState == MOVE_LINE) {
@@ -402,10 +393,8 @@ void onMouseMotion(int pX, int pY) {	// pX, pY are the pixel coordinates of the 
 	}
 }
 
-// Mouse click event
-void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel coordinates of the cursor in the coordinate system of the operation system
-	// Convert to normalized device space
-	float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
+void onMouse(int button, int state, int pX, int pY) {
+	float cX = 2.0f * pX / windowWidth - 1;
 	float cY = 1.0f - 2.0f * pY / windowHeight;
 
 	if (state == GLUT_DOWN) {
@@ -441,7 +430,6 @@ void onMouse(int button, int state, int pX, int pY) { // pX, pY are the pixel co
 		glutPostRedisplay();
 }
 
-// Idle event indicating that some time elapsed: do animation here
 void onIdle() {
-	long time = glutGet(GLUT_ELAPSED_TIME); // elapsed time since the start of the program
+	long time = glutGet(GLUT_ELAPSED_TIME);
 }
