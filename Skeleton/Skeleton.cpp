@@ -56,10 +56,10 @@ const char* const fragmentSource = R"(
 	precision highp float;	// normal floats, makes no difference on desktop computers
 	
 	uniform vec3 color;		// uniform variable, the color of the primitive
-	out vec3 outColor;		// computed color of the current pixel
+	out vec4 outColor;		// computed color of the current pixel
 
 	void main() {
-		outColor = color;	// computed color is the color of the primitive
+		outColor = vec4(color.x, color.y, color.z, 1);	// computed color is the color of the primitive
 	}
 )";
 
@@ -334,9 +334,6 @@ void onInitialization() {
 
 	pontok = new PointCollection;
 	vonalak = new LineCollection;
-
-	pontok->addPoint(vec2(-0.5f, 0.5f));
-	pontok->addPoint(vec2(0.5f, -0.5f));
 
 	gpuProgram.create(vertexSource, fragmentSource, "outColor");
 }
