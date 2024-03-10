@@ -123,7 +123,7 @@ public:
 	}
 	const vec3* pointNearby(vec3 point) {
 		for (const vec3& vertex : points.getVtxArray()) {
-			if (fabs(vertex.x - point.x) <= 0.01f && fabs(vertex.y - point.y) <= 0.01f && fabs(vertex.z - point.z) <= 0.01f) {
+			if (fabs(vertex.x - point.x) <= 0.02f && fabs(vertex.y - point.y) <= 0.02f) {
 				return &vertex;
 			}
 		}
@@ -163,6 +163,7 @@ public:
 
 	vec3 intersectPoint(Line otherLine) {
 		vec3 intersectPoint;
+
 		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / (otherLine.A * B - A * otherLine.B);
 		intersectPoint.y = (otherLine.A * C - A * otherLine.C) / (A * otherLine.B - otherLine.A * B);
 		intersectPoint.z = 1;
@@ -271,9 +272,9 @@ public:
 		}
 	}
 
-	void selectLineForIntersect(vec3 p) {
+	void selectLineForIntersect(vec3 point) {
 		for (Line& lineIt : lines) {
-			if (lineIt.pointOnLine(p) == 1) {
+			if (lineIt.pointOnLine(point) == 1) {
 				if (selectedLines.size() < 2) {
 					selectedLines.push_back(&lineIt);
 				}
@@ -312,7 +313,7 @@ public:
 		selectedLines.pop_back();
 		vec3 intersectPoint = tempLine->intersectPoint(*selectedLines.back());
 		selectedLines.pop_back();
-		pontok->addPoint(vec2(intersectPoint.x, intersectPoint.y));
+		pontok->addPoint(vec3(intersectPoint.x, intersectPoint.y, 1));
 	}
 
 	void draw() {
@@ -363,9 +364,6 @@ void onKeyboard(unsigned char key, int pX, int pY) {
 		printf("Intersect\n");
 		vonalak->emptySelectedArray();
 		windowState = LINE_INTERSECTION;
-		break;
-	default:
-		windowState = IDLE;
 		break;
 	}
 }
