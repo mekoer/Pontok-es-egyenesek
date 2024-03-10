@@ -43,10 +43,10 @@ const char* const vertexSource = R"(
 	#version 330				// Shader 3.3
 	precision highp float;		// normal floats, makes no difference on desktop computers
 
-	layout(location = 0) in vec2 vp;	// Varying input: vp = vertex position is expected in attrib array 0
+	layout(location = 0) in vec3 vp;	// Varying input: vp = vertex position is expected in attrib array 0
 
 	void main() {
-		gl_Position = vec4(vp.x, vp.y, 0, 1);		// transform vp from modeling space to normalized device space
+		gl_Position = vec4(vp.x, vp.y, vp.z, 1);		// transform vp from modeling space to normalized device space
 	}
 )";
 
@@ -78,7 +78,7 @@ int windowState = WindowState::IDLE;
 
 class Object {
 	unsigned int vao, vbo;
-	vector<vec2> vtx;
+	vector<vec3> vtx;
 public:
 	Object() {
 		glGenVertexArrays(1, &vao);
@@ -88,17 +88,17 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	}
 
-	vector<vec2>& getVtxArray() {
+	vector<vec3>& getVtxArray() {
 		return vtx;
 	}
 
 	void updateGPU() {
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vtx.size() * sizeof(vec2), &vtx[0], GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vtx.size() * sizeof(vec3), &vtx[0], GL_DYNAMIC_DRAW);
 	}
 
 	void Draw(int type, vec3 color) {
@@ -116,14 +116,14 @@ public:
 	PointCollection() {
 		points = Object();
 	}
-	void addPoint(vec2 point) {
+	void addPoint(vec3 point) {
 		points.getVtxArray().push_back(point);
 		printf("Point added at (%3.2f, %3.2f)\n", point.x, point.y);
 		points.updateGPU();
 	}
-	const vec2* pointNearby(vec2 click) {
-		for (const vec2& vertex : points.getVtxArray()) {
-			if (fabs(vertex.x - click.x) <= 0.01f && fabs(vertex.y - click.y) <= 0.01f) {
+	const vec3* pointNearby(vec3 point) {
+		for (const vec3& vertex : points.getVtxArray()) {
+			if (fabs(vertex.x - point.x) <= 0.01f && fabs(vertex.y - point.y) <= 0.01f && fabs(vertex.z - point.z) <= 0.01f) {
 				return &vertex;
 			}
 		}
@@ -137,19 +137,19 @@ public:
 PointCollection* pontok;
 
 class Line {
-	vec2 cP0;
-	vec2 cParallelVector;
-	vec2 cNormalVector;
-	vector<vec2> lineEnds;
+	vec3 cP0;
+	vec3 cParallelVector;
+	vec3 cNormalVector;
+	vector<vec3> lineEnds;
 
 protected:
 	// implicit egyenlet parameterek
 	float A, B, C;
 public:
-	Line(vec2 p1, vec2 p2) {
+	Line(vec3 p1, vec3 p2) {
 		cP0 = p1;
 		cParallelVector = p2 - p1;
-		cNormalVector = vec2(-1 * cParallelVector.y, cParallelVector.x);
+		cNormalVector = vec3(-1 * cParallelVector.y, cParallelVector.x, cParallelVector.z);
 		A = cNormalVector.x;
 		B = cNormalVector.y;
 		C = -1 * cNormalVector.x * p1.x + -1 * cNormalVector.y * p1.y;
@@ -161,15 +161,16 @@ public:
 			cP0.x, cP0.y, cParallelVector.x, cParallelVector.y);
 	}
 
-	vec2 intersectPoint(Line otherLine) {
-		vec2 intersectPoint;
+	vec3 intersectPoint(Line otherLine) {
+		vec3 intersectPoint;
 		intersectPoint.x = (otherLine.B * C - B * otherLine.C) / (otherLine.A * B - A * otherLine.B);
 		intersectPoint.y = (otherLine.A * C - A * otherLine.C) / (A * otherLine.B - otherLine.A * B);
+		intersectPoint.z = 1;
 
 		return intersectPoint;
 	}
 
-	int pointOnLine(vec2 point) {
+	int pointOnLine(vec3 point) {
 		float pointDist = fabs(A * point.x + B * point.y + C) / sqrtf(A*A + B*B);
 		if (fabs(pointDist) <= 0.01f) {
 			return 1;
@@ -177,33 +178,30 @@ public:
 		return 0;
 	}
 
-	vector<vec2> getEnds() {
+	vector<vec3> getEnds() {
 		return lineEnds;
 	}
 
 	void inViewPort() {
-		vector<vec2> vertices;
+		vector<vec3> vertices;
 		int numberOfIntersects = 0;
 
-		// top:
-		Line top(vec2(1.0f, 1.0f), vec2(-1.0f, 1.0f));
-		vec2 intersect = intersectPoint(top);
+		Line top(vec3(1.0f, 1.0f, 1.0f), vec3(-1.0f, 1.0f, 1.0f));
+		vec3 intersect = intersectPoint(top);
 
 		if (fabs(intersect.x) <= 1) {
 			numberOfIntersects++;
 			vertices.push_back(intersect);
 		}
 
-		// bottom:
-		Line bottom(vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f));
+		Line bottom(vec3(-1.0f, -1.0f, 1.0f), vec3(1.0f, -1.0f, 1.0f));
 		intersect = intersectPoint(bottom);
 		if (fabs(intersect.x) <= 1) {
 			numberOfIntersects++;
 			vertices.push_back(intersect);
 		}
 
-		// right:
-		Line right(vec2(1.0f, 1.0f), vec2(1.0f, -1.0f));
+		Line right(vec3(1.0f, 1.0f, 1.0f), vec3(1.0f, -1.0f, 1.0f));
 		intersect = intersectPoint(right);
 		if (numberOfIntersects <= 2) {
 			if (fabs(intersect.y) < 1) {
@@ -212,8 +210,7 @@ public:
 			}
 		}
 
-		// left:
-		Line left(vec2(-1.0f, 1.0f), vec2(-1.0f, -1.0f));
+		Line left(vec3(-1.0f, 1.0f, 1.0f), vec3(-1.0f, -1.0f, 1.0f));
 		intersect = intersectPoint(left);
 		if (numberOfIntersects <= 2) {
 			if (fabs(intersect.y) < 1) {
@@ -221,11 +218,10 @@ public:
 				vertices.push_back(intersect);
 			}
 		}
-
 		lineEnds = vertices;
 	}
 
-	void move(vec2 point) {
+	void move(vec3 point) {
 		cP0 = point;
 		C = -1 * cNormalVector.x * cP0.x + -1 * cNormalVector.y * cP0.y;
 	}
@@ -233,7 +229,7 @@ public:
 
 class LineCollection {
 	Object endPoints;
-	vector<vec2> constructionPoints;
+	vector<vec3> constructionPoints;
 	vector<Line> lines;
 	vector<Line*> selectedLines;
 public:
@@ -245,21 +241,21 @@ public:
 		endPoints.getVtxArray().clear();
 
 		for (Line& lineIt : lines) {
-			vector<vec2> ends = lineIt.getEnds();
+			vector<vec3> ends = lineIt.getEnds();
 			endPoints.getVtxArray().push_back(ends.back());
 			ends.pop_back();
 			endPoints.getVtxArray().push_back(ends.back());
 		}
 	}
 
-	void addVertex(vec2 vtx) {
+	void addVertex(vec3 vtx) {
 		if (constructionPoints.size() < 2) {
 			constructionPoints.push_back(vtx);
 		}
 		if (constructionPoints.size() == 2) {
-			vec2 p1 = constructionPoints.back();
+			vec3 p1 = constructionPoints.back();
 			constructionPoints.pop_back();
-			vec2 p2 = constructionPoints.back();
+			vec3 p2 = constructionPoints.back();
 			constructionPoints.pop_back();
 
 			Line newLine(p1, p2);
@@ -275,7 +271,7 @@ public:
 		}
 	}
 
-	void selectLineForIntersect(vec2 p) {
+	void selectLineForIntersect(vec3 p) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(p) == 1) {
 				if (selectedLines.size() < 2) {
@@ -288,7 +284,7 @@ public:
 		}
 	}
 
-	void selectLineForMove(vec2 point) {
+	void selectLineForMove(vec3 point) {
 		for (Line& lineIt : lines) {
 			if (lineIt.pointOnLine(point) == 1) {
 				selectedLines.push_back(&lineIt);
@@ -297,7 +293,7 @@ public:
 		}
 	}
 
-	void move(vec2 point) {
+	void move(vec3 point) {
 		selectedLines.back()->move(point);
 		selectedLines.back()->inViewPort();
 		updateEndPoints();
@@ -314,9 +310,9 @@ public:
 	void addPointAtIntersection() {
 		Line* tempLine = selectedLines.back();
 		selectedLines.pop_back();
-		vec2 intersectPoint = tempLine->intersectPoint(*selectedLines.back());
+		vec3 intersectPoint = tempLine->intersectPoint(*selectedLines.back());
 		selectedLines.pop_back();
-		pontok->addPoint(intersectPoint);
+		pontok->addPoint(vec2(intersectPoint.x, intersectPoint.y));
 	}
 
 	void draw() {
@@ -383,7 +379,7 @@ void onMouseMotion(int pX, int pY) {
 	if (windowState == MOVE_LINE) {
 		if (!(vonalak->getSelected().empty())) {
 			if (fabs(cX) <= 1 && fabs(cY) <= 1) {
-				vonalak->move(vec2(cX, cY));
+				vonalak->move(vec3(cX, cY, 1));
 				glutPostRedisplay();
 			}
 		}
@@ -400,13 +396,12 @@ void onMouse(int button, int state, int pX, int pY) {
 			break;
 		case DRAW_POINTS:
 			if (button == GLUT_LEFT_BUTTON) {
-				pontok->addPoint(vec2(cX, cY));
+				pontok->addPoint(vec3(cX, cY, 1));
 			}
 			break;
 		case DRAW_LINES:
 			if (button == GLUT_LEFT_BUTTON) {
-				vec2 cP(cX, cY);
-				const vec2* clickedPoint = pontok->pointNearby(cP);
+				const vec3* clickedPoint = pontok->pointNearby(vec3(cX, cY, 1));
 				if (clickedPoint != nullptr) {
 					vonalak->addVertex(*clickedPoint);
 				}
@@ -415,11 +410,11 @@ void onMouse(int button, int state, int pX, int pY) {
 		case MOVE_LINE:
 			if (button == GLUT_LEFT_BUTTON) {
 				vonalak->emptySelectedArray();
-				vonalak->selectLineForMove(vec2(cX, cY));
+				vonalak->selectLineForMove(vec3(cX, cY, 1));
 			}
 			break;
 		case LINE_INTERSECTION:
-			vonalak->selectLineForIntersect(vec2(cX, cY));
+			vonalak->selectLineForIntersect(vec3(cX, cY, 1));
 			break;
 		}
 	}
